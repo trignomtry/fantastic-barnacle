@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student view</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <h1>Student</h1>
+    <div id="content">
+        <input type="text" id="code" placeholder="Code">
+        <input type="text" id="name" placeholder="Name">
+        <button onclick="joinGame()">Play</button>
+    </div>
+</body>
+<script>
+    let content = document.getElementById("content");
+    async function joinGame() {
+        let code = document.getElementById("code").value;
+        let name = document.getElementById("name").value;
+        if (!code) {
+            alert("Please enter a game code");
+            return;
+        } if (!name) {
+            alert("Please enter a name");
+            return;
+        }
+        let ws = new WebSocket("ws://localhost:8085/api/ws/" + code + "/" + name);
+        ws.onmessage = function (m) {
+            console.log(m.data);
+            if (m.data == "gamestart") {
+                content.innerHTML = "";
+            } else if (m.data == "joinconfirmed") {
+                content.innerHTML = "<h1>Waiting for game to start</h1>"
+            } else if (m.data == "gameend") {
+                content.innerHTML = "<h1>The game has ended</h1>"
+            } else {
+                if (JSON.parse(m.data).event == "new_question") {
+                    content.innerHTML = "";
+                    let q = JSON.parse(m.data).question;
+                    let answerchoices = document.createElement("div");
+                    answerchoices.id = "answerchoices";
+                    answerchoices.innerHTML = q.text;
+                    for (let i = 0; i < q.responses.length; i++) {
+                        let ff = document.createElement("button");
+                        ff.innerText = q.responses[i].text;
+                        ff.onclick = () => {
+                            ws.send(JSON.stringify({ event: "answer", question: 0, answer: i, }))
+                            content.innerHTML = "Submitted, waiting for next question";
+                        };
+                        answerchoices.appendChild(ff);
+                    }
+                    content.appendChild(answerchoices);
+                }
+            }
+        };
+        ws.onopen = function () {
+            ws.send(JSON.stringify({ event: "joined" }));
+        };
+        ws.onerror = (e) => {
+            console.log("Error from studentws");
+        };
+    }
+</script>
+
+</html>

@@ -1,0 +1,113 @@
+/* style.css */
+
+body {
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #ff6b6b, #4ecdc4);
+    font-family: 'Roboto', sans-serif;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+h1 {
+    font-size: 4rem;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    text-shadow: 3px 3px 0 rgba(0,0,0,0.2);
+    margin: 20px 0;
+}
+
+#content {
+    background: rgba(255,255,255,0.9);
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    width: 90%;
+    max-width: 600px;
+    color: #2d3436;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+.hidden{
+    display: none !important;
+}
+
+#playingGame {
+    background: rgba(255,255,255,0.9);
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    width: 90%;
+    max-width: 600px;
+    color: #2d3436;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+button {
+    background: #a55eea;
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    font-size: 1.2rem;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+input {
+    padding: 15px;
+    font-size: 1.2rem;
+    border-radius: 50px;
+    border: 3px solid #a55eea;
+    width: 100%;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+input:focus {
+    outline: none;
+    box-shadow: 0 0 15px rgba(165,94,234,0.5);
+}
+
+#players {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* #players */ li { 
+    background: #4ecdc4;
+    padding: 15px;
+    border-radius: 50px;
+    font-weight: bold;
+    color: white;
+}
+
+#answerchoices button {
+    width: 100%;
+    background: #2ecc71;
+    margin: 10px 0;
+}
+
+#gamecode {
+    color: #e74c3c;
+    font-size: 2rem;
+    text-shadow: 2px 2px 0 rgba(0,0,0,0.1);
+}

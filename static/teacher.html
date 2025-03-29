@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher view</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <h1>Teacher</h1>
+    <div id="content">
+
+    </div>
+    <div id="playingGame" class="hidden">
+        <h3 id="gamecode">Game Code Loading...</h3>
+        <h3>Players:</h3>
+        <ul id="players"></ul>
+        <button onclick="gameStart()">Start Game</button>
+    </div>
+</body>
+<script>
+    let playersDiv = document.getElementById("players");
+    let content = document.getElementById("content");
+    let playingGame = document.getElementById("playingGame");
+
+    async function skib() {
+        let urls = new URLSearchParams(window.location.search);
+        if (urls.get("key")) {
+            localStorage.setItem("appKey", urls.get("key"));
+        }
+        let respo = await fetch("https://www.vortice.app/api/apps/" + localStorage.getItem("appKey") + "/userdata");
+        respo = await respo.json();
+        console.log("from vid: " + JSON.stringify(respo));
+
+        if (respo.error) {
+            content.innerHTML = "<div class='hidden' id='login-wv-button' accesskey='90ef3ad5-d866-44fe-a8e6-2ae2ab70fb59' data-callback='/teacher.html'></div>";
+            document.getElementById("login-wv-button").classList.remove("hidden");
+            let sc = document.createElement("script");
+            sc.src = "https://www.vortice.app/dash/wv/vortice.js";
+            document.head.appendChild(sc);
+        }
+    }
+    skib();
+
+    async function loadSets() {
+        try {
+            const res = await fetch(`/api/${localStorage.getItem("appKey")}/get_sets`);
+            const sets = await res.json();
+            console.log(sets);
+            content.innerHTML = "<button onclick='newSet()'>New Set</button>"
+            if (Array.isArray(sets)) {
+                sets.forEach(set => {
+                    const div = document.createElement("div");
+                    div.innerHTML = "<h3>" + set.name + "</h3>";
+                    const playbtn = document.createElement("button")
+                    playbtn.innerText = "Play";
+                    playbtn.onclick = function () { startGame(set.id) };
+                    div.appendChild(playbtn);
+                    content.appendChild(div);
+                });
+
+            } else {
+                console.error("Expected an array from /get_sets");
+            }
+        } catch (err) {
+            console.error("Failed to fetch sets:", err);
+        }
+    }
+
+    loadSets();
+
+    function showError(error) {
+        alert(error);
+    }
+    function gameStart() {
+        teachws.send("gamestart");
+    }
+    function newSet() {
+        window.location.href = "/newset.html";
+    }
+    function startGame(id) {
+        content.classList.add("hidden");
+        playingGame.classList.remove("hidden");
+        window.teachws = new WebSocket("/api/teacher/" + localStorage.getItem("appKey") + "/start_game/" + id);
+        teachws.onmessage = function (m) {
+            console.log(m.data);
+            let data = JSON.parse(m.data);
+            if (data.event == "gamecode") {
+                document.getElementById("gamecode").innerText = data.gamecode;
+            } else if (data.event == "playerjoined") {
+                playersDiv.innerHTML = playersDiv.innerHTML + "<li>" + data.player.name + "</li>";
+            } else if (data.event == "gamestart") {
+                content.classList.add("hidden");
+                playingGame.classList.remove("hidden");
+            } else if (data.event == "new_question") {
+                playingGame.innerHTML = "<h1>" + data.question.text + "</h1>";
+                setTimeout(function () {
+                    teachws.send("continue");
+                }, 15000);
+            } else if (data.event == "leaderboard") {
+                playingGame.innerHTML = "";
+                for (let i = 0; i < data.leaderboard.length; i++) {
+                    let item = document.createElement("li");
+                    item.innerText = i + 1 + ". " + data.leaderboard[i].name + " - " + data.leaderboard[i].points;
+                    playingGame.appendChild(item);
+                }
+            }
+        };
+        teachws.onopen = function () {
+            teachws.send("HELLOW WORLD");
+        };
+        teachws.onerror = (e) => {
+            console.log("Error from teachws");
+        };
+    }
+</script>
+<script src=></script>
+
+
+</html>
