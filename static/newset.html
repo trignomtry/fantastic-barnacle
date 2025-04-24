@@ -1,192 +1,268 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-    <title>Create Activity</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta charset="UTF-8">
+    <title>Quiz Creator</title>
     <style>
-        .question-card {
-            transition: transform 0.2s;
+        body {
+            font-family: sans-serif;
+            padding: 2em;
+            background: #f0f0f0;
+            max-width: 800px;
+            margin: auto;
         }
 
-        .question-card:hover {
-            transform: translateY(-3px);
+        input,
+        textarea,
+        select,
+        button {
+            margin: 0.5em 0;
+            padding: 0.5em;
+            box-sizing: border-box;
         }
 
-        .template {
-            display: none;
+        input[type="text"],
+        textarea,
+        select {
+            width: 100%;
+        }
+
+        .question-card,
+        .slide-card {
+            background: #fff;
+            padding: 1em;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            margin: 1em 0;
+        }
+
+        .card-header {
+            font-weight: bold;
+            margin-bottom: 0.5em;
+        }
+
+        .button-row {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 1em;
+        }
+
+        .button-row button {
+            flex: 1;
+            margin: 0 0.5em;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .button-row button:hover {
+            background-color: #0056b3;
+        }
+
+        .response-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5em;
+        }
+
+        .response-row input[type="text"] {
+            flex: 1;
+            margin-right: 0.5em;
         }
     </style>
 </head>
 
-<body class="bg-light">
-    <div class="container py-5">
-        <!-- Auth Check -->
-        <div id="authCheck"></div>
+<body>
+    <h1>Create an Activity</h1>
+    <input id="activityName" placeholder="Activity Title">
 
-        <!-- Header -->
-        <div class="text-center mb-5">
-            <h1 class="display-4 mb-3">Create New Quiz</h1>
-            <div class="mb-4">
-                <input type="text" id="activityName" class="form-control form-control-lg" placeholder="Quiz Title">
-            </div>
-        </div>
+    <div id="questionsContainer"></div>
 
-        <!-- Questions Container -->
-        <div id="questionsContainer" class="row g-4"></div>
-
-        <!-- Controls -->
-        <div class="text-center mt-5">
-            <button class="btn btn-primary btn-lg mx-2" onclick="addQuestion('trueFalse')">
-                Add True/False Question
-            </button>
-            <button class="btn btn-primary btn-lg mx-2" onclick="addQuestion('fourAnswer')">
-                Add Multiple Choice
-            </button>
-            <button class="btn btn-success btn-lg mx-2" onclick="finalizeActivity()">
-                Create Quiz
-            </button>
-        </div>
-
-        <!-- Templates -->
-        <div class="template" id="trueFalseTemplate">
-            <div class="question-card card shadow-sm mb-4">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="card-title">True/False Question</h5>
-                        <button class="btn btn-danger btn-sm" onclick="this.closest('.question-card').remove()">
-                            Remove
-                        </button>
-                    </div>
-                    <input type="text" class="form-control mb-3 questionText" placeholder="Enter your question">
-                    <div class="responses">
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox">
-                            <label class="form-check-label">True</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox">
-                            <label class="form-check-label">False</label>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="template" id="fourAnswerTemplate">
-            <div class="question-card card shadow-sm mb-4">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="card-title">Multiple Choice Question</h5>
-                        <button class="btn btn-danger btn-sm" onclick="this.closest('.question-card').remove()">
-                            Remove
-                        </button>
-                    </div>
-                    <input type="text" class="form-control mb-3 questionText" placeholder="Enter your question">
-                    <div class="responses">
-                        <div class="input-group mb-2">
-                            <div class="input-group-text">
-                                <input class="form-check-input mt-0" type="checkbox">
-                            </div>
-                            <input type="text" class="form-control" placeholder="Answer option">
-                        </div>
-                        <div class="input-group mb-2">
-                            <div class="input-group-text">
-                                <input class="form-check-input mt-0" type="checkbox">
-                            </div>
-                            <input type="text" class="form-control" placeholder="Answer option">
-                        </div>
-                        <div class="input-group mb-2">
-                            <div class="input-group-text">
-                                <input class="form-check-input mt-0" type="checkbox">
-                            </div>
-                            <input type="text" class="form-control" placeholder="Answer option">
-                        </div>
-                        <div class="input-group">
-                            <div class="input-group-text">
-                                <input class="form-check-input mt-0" type="checkbox">
-                            </div>
-                            <input type="text" class="form-control" placeholder="Answer option">
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div class="button-row">
+        <button onclick="addQuestionCard()">Add Multiple Choice</button>
+        <button onclick="addTrueFalseCard()">Add True/False</button>
+        <button onclick="addSlideCard()">Add Slide</button>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <button onclick="finalizeActivity()" style="margin-top: 1em; width: 100%;">Create Quiz</button>
+
     <script>
-        // Authentication check
-        window.onload = () => {
-            if (!localStorage.getItem('appKey')) {
-                window.location.href = '/teacher.html';
-            }
-        };
-
-        function addQuestion(type) {
-            const template = document.getElementById(`${type}Template`);
-            const clone = template.cloneNode(true);
-            clone.classList.remove('template');
-
-            // Initialize dynamic elements for 4-answer template
-            if (type === 'fourAnswer') {
-                const answerInputs = clone.querySelectorAll('.form-control[type="text"]');
-                answerInputs.forEach((input, index) => {
-                    input.placeholder = `Option ${index + 1}`;
-                });
-            }
-
-            questionsContainer.appendChild(clone);
+        function addQuestionCard() {
+            const card = document.createElement('div');
+            card.className = 'question-card';
+            card.dataset.type = 'question';
+            card.innerHTML = `
+        <div class="card-header">Multiple Choice Question</div>
+        <input class="question-text" placeholder="Question text">
+        <div class="response-row"><input type="text" class="response"><label><input type="checkbox" class="response-correct"> Correct</label></div>
+        <div class="response-row"><input type="text" class="response"><label><input type="checkbox" class="response-correct"> Correct</label></div>
+        <div class="response-row"><input type="text" class="response"><label><input type="checkbox" class="response-correct"> Correct</label></div>
+        <div class="response-row"><input type="text" class="response"><label><input type="checkbox" class="response-correct"> Correct</label></div>
+      `;
+            document.getElementById('questionsContainer').appendChild(card);
         }
 
-        function collectQuestions() {
-            return Array.from(document.querySelectorAll('.question-card')).map(questionEl => {
-                const responses = Array.from(questionEl.querySelectorAll('.responses > div')).map((responseEl, i) => {
-                    const textInput = responseEl.querySelector('input[type="text"]');
-                    const checkbox = responseEl.querySelector('input[type="checkbox"]');
+        function addTrueFalseCard() {
+            const card = document.createElement('div');
+            card.className = 'question-card';
+            card.dataset.type = 'question';
+            card.innerHTML = `
+        <div class="card-header">True/False Question</div>
+        <input class="question-text" placeholder="Question text">
+        <select class="true-false-select">
+          <option value="true">True</option>
+          <option value="false">False</option>
+        </select>
+      `;
+            document.getElementById('questionsContainer').appendChild(card);
+        }
 
-                    return {
-                        text: textInput ? textInput.value : (i === 0 ? 'True' : 'False'),
-                        correct: checkbox?.checked || false
-                    };
-                });
+        function addSlideCard() {
+            const card = document.createElement('div');
+            card.className = 'slide-card';
+            card.dataset.type = 'slide';
+            card.innerHTML = `
+        <div class="card-header">Slide</div>
+        <select class="slide-kind">
+          <option value="TitleText" default>Title + Text</option>
+          <option value="Title">Title</option>
+          <option value="OnlyText">Only Text</option>
+        </select>
+        <input class="slide-title" placeholder="Slide Title">
+        <textarea class="slide-text" placeholder="Slide Text"></textarea>
+        <label>Slide Color: </label>
+        <select class="slide-color">
+          <option value="#ffffff">White</option>
+          <option value="#ff0000">Red</option>
+          <option value="#ffa500">Orange</option>
+          <option value="#ffff00">Yellow</option>
+          <option value="#008000">Green</option>
+          <option value="#0000ff">Blue</option>
+          <option value="#4b0082">Indigo</option>
+          <option value="#ee82ee">Violet</option>
+        </select>
+        <label>Text Color: </label>
+        <select class="slide-font-color">
+          <option value="#ffffff">White</option>
+          <option value="#ff0000">Red</option>
+          <option value="#ffa500">Orange</option>
+          <option value="#ffff00">Yellow</option>
+          <option value="#008000">Green</option>
+          <option value="#0000ff">Blue</option>
+          <option value="#4b0082">Indigo</option>
+          <option value="#ee82ee">Violet</option>
+          <option value="#000000" selected>Black</option>
+        </select>
+      `;
+            document.getElementById('questionsContainer').appendChild(card);
+            const kindSelect = card.querySelector('.slide-kind');
+            const titleInput = card.querySelector('.slide-title');
+            const textInput = card.querySelector('.slide-text');
+            const colorInput = card.querySelector('.slide-color');
+            const fontColorInput = card.querySelector('.slide-font-color');
 
-                // For True/False template
-                if (!responses[0]?.text) {
-                    responses.forEach((r, i) => r.text = i === 0 ? 'True' : 'False');
+            const updatePreview = () => {
+                const kind = kindSelect.value;
+                titleInput.style.display = (kind === 'OnlyText') ? 'none' : '';
+                textInput.style.display = (kind === 'Title') ? 'none' : '';
+                textInput.required = (kind === 'TitleText');
+            };
+
+            [titleInput, textInput, colorInput, fontColorInput, kindSelect]
+                .forEach(el => el.addEventListener('input', updatePreview));
+        }
+
+        function finalizeActivity() {
+            const appKey = localStorage.getItem('appKey');
+            if (!appKey) return alert('No appKey in localStorage');
+
+            const activityName = document.getElementById('activityName').value.trim();
+            const cards = document.querySelectorAll('.question-card, .slide-card');
+
+            const slides = [];
+            const questions = [];
+
+            cards.forEach(card => {
+                const type = card.dataset.type;
+                if (type === 'slide') {
+                    const kind = card.querySelector('.slide-kind').value;
+                    const title = card.querySelector('.slide-title').value.trim();
+                    const text = (kind !== 'Title') ? card.querySelector('.slide-text').value.trim() : '';
+                    if (kind === 'TitleText' && !text) return;
+                    const color = card.querySelector('.slide-color').value.trim();
+                    const font_color = card.querySelector('.slide-font-color').value.trim();
+
+                    let slideObj;
+                    if (kind === 'Title') {
+                        slideObj = {
+                            Slide: {
+                                kind: {
+                                    Title: [title, { color, font_color }]
+                                }
+                            }
+                        };
+                    } else if (kind === 'TitleText') {
+                        slideObj = {
+                            Slide: {
+                                kind: {
+                                    TitleText: [title, text, { color, font_color }]
+                                }
+                            }
+                        };
+                    } else if (kind === 'OnlyText') {
+                        slideObj = {
+                            Slide: {
+                                kind: {
+                                    OnlyText: text,
+                                    style: { color, font_color }
+                                }
+                            }
+                        };
+                    }
+                    slides.push(slideObj);
+                } else {
+                    const text = card.querySelector('.question-text').value.trim();
+                    if (!text) return;
+
+                    if (card.querySelector('.true-false-select')) {
+                        const correct = card.querySelector('.true-false-select').value === 'true';
+                        questions.push({
+                            text,
+                            responses: [
+                                { text: 'True', correct },
+                                { text: 'False', correct: !correct }
+                            ]
+                        });
+                    } else {
+                        const responses = Array.from(card.querySelectorAll('.response-row')).map(row => {
+                            const text = row.querySelector('.response').value.trim();
+                            const correct = row.querySelector('.response-correct').checked;
+                            return text ? { text, correct } : null;
+                        }).filter(Boolean);
+
+                        if (responses.length > 0) {
+                            questions.push({ text, responses });
+                        }
+                    }
                 }
-
-                return {
-                    text: questionEl.querySelector('.questionText').value,
-                    responses: responses.filter(r => r.text.trim() !== '')
-                };
             });
-        }
 
-        async function finalizeActivity() {
-            const name = document.getElementById('activityName').value;
-            const questions = collectQuestions().filter(q => q.text.trim() !== '');
+            const payload = {
+                name: activityName,
+                access: { All: "All" },
+                config: slides.length > 0 ? { Slides: slides } : { Quiz: { questions } }
+            };
 
-            try {
-                const response = await fetch(`/api/teachers/${localStorage.getItem('appKey')}/create_activity`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        name,
-                        access: { "All": "All" },
-                        config: { Quiz: { questions } }
-                    })
-                });
-
-                if (!response.ok) throw new Error('Failed to create activity');
-                // let datid = await response.json();
-
-                alert('Quiz created successfully!');
-                window.location.href = "teacher.html";
-            } catch (error) {
-                console.error(error);
-                alert('Error creating quiz: ' + error.message);
-            }
+            fetch(`/api/teachers/${appKey}/create_activity`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+                .then(res => res.ok ? window.location.href = "/teacher.html" : alert('Error creating activity'))
+                .catch(err => console.error(err));
         }
     </script>
 </body>

@@ -77,6 +77,12 @@
     function gameStart() {
         teachws.send("gamestart");
     }
+    function continue5Secs() {
+        console.log("readyState:", teachws.readyState);
+        console.log("WebSocket object:", teachws);
+        teachws.send("continue");
+        console.log("Sent?");
+    }
     function newSet() {
         window.location.href = "/newset.html";
     }
@@ -106,17 +112,30 @@
                     item.innerText = i + 1 + ". " + data.leaderboard[i].name + " - " + data.leaderboard[i].points;
                     playingGame.appendChild(item);
                 }
+            } else if (data.event == "new_slide") {
+                let slide = data.slide.kind;
+                if (slide.Title) {
+                    let style = slide.Title[1];
+                    playingGame.innerHTML = "<div id=\"slide\" style='background-color: " + style.color + "; color: " + style.font_color + "'><h1 class='slideTitle'>" + slide.Title[0] + "</h1><button onclick='continue5Secs()'>Continue</button></div>";
+                } else if (slide.TitleText) {
+                    let style = slide.TitleText[2];
+                    playingGame.innerHTML = "<div id=\"slide\" style='background-color: " + style.color + "; color: " + style.font_color + "'><h1 class='slideTitle'>" + slide.TitleText[0] + "</h1><p>" + slide.TitleText[1] + "</p><button onclick='continue5Secs()'>Continue</button></div>";
+                } else if (slide.OnlyText) {
+                    let style = slide.TitleText[2];
+                    playingGame.innerHTML = "<div id=\"slide\" style='background-color: " + style.color + "; color: " + style.font_color + "'><p>" + slide.OnlyText[0] + "</p><button onclick='continue5Secs()'>Continue</button></div>";
+                }
             }
         };
         teachws.onopen = function () {
-            teachws.send("HELLOW WORLD");
+            console.log("WS Initiated");
         };
         teachws.onerror = (e) => {
             console.log("Error from teachws");
         };
+
     }
+
 </script>
-<script src=></script>
 
 
 </html>
