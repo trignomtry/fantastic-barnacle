@@ -81,6 +81,7 @@ struct Teacher {
 #[derive(Message)]
 #[rtype(result = "StateResponse")]
 enum StateCommand {
+    StartGame(String),
     GetGame(String),
     GetActivity(String),
     CreateGame(String, Addr<Game>),
@@ -97,6 +98,40 @@ impl Handler<StateCommand> for State {
     type Result = MessageResult<StateCommand>;
     fn handle(&mut self, msg: StateCommand, _: &mut Self::Context) -> Self::Result {
         match msg {
+            StateCommand::StartGame(code) => {
+                let games = self.games.clone();
+                actix::spawn(async move {
+                    if let Some(game) = games.get(&code) {
+                            game.do_send(GameCommand::SetPhase(GamePhase::OnQuestion(0)));
+                            game.do_send(GameCommand::SendTextToPlayers("gamestart".to_string()));
+                            if let Ok(GameResponse::Config(conf)) =
+                                &game.send(GameCommand::GetConfig).await
+                            {
+                                match conf {
+                                    Config::Quiz { questions } => {
+                                        game
+                                        .do_send(GameCommand::SendTextToPlayers(json!({"event": "new_question", "question": {"number": 0, "text": questions[0].text, "responses": questions[0].responses.iter().map(move |r| {json!({"text": r.text})}).collect::<Vec<Value>>() }}).to_string()));
+                                    }
+                                    Config::Slides(slides) => {
+                                        if let SlidesItem::Question(q) = &slides[0] {
+                                            game
+                                            .do_send(GameCommand::SendTextToPlayers(json!({"event": "new_question", "question": {"number": 0, "text": q.text, "responses": q.responses.iter().map(move |r| {json!({"text": r.text})}).collect::<Vec<Value>>() }}).to_string()));
+                                        }
+                                    }
+                                }
+                            }
+                            game.do_send(GameCommand::StartGame);
+                            if let Ok(GameResponse::Config(conf)) =
+                                &game.send(GameCommand::GetConfig).await
+                            {
+
+                            }
+
+                    }
+                });
+
+                MessageResult(StateResponse::None)
+            }
             StateCommand::GetGame(name) => {
                 let game = self.games.get(&name).cloned();
                 MessageResult(StateResponse::Game(game))
@@ -143,7 +178,7 @@ enum GameCommand {
     SetPhase(GamePhase),
     SendTextToTeacher(String),
     SendTextToPlayers(String),
-
+    StartGame,
     GenLeaderboard,
 }
 
@@ -152,7 +187,6 @@ enum GameCommand {
 enum GameResponse {
     Phase(GamePhase),
     Config(Config),
-
     None,
 }
 
@@ -280,6 +314,34 @@ impl Handler<GameCommand> for Game {
                     }
                     
                 }.into_actor(self));
+            }
+            GameCommand::StartGame => {
+                let conf = self.config.clone();
+                let session = self.teacher.clone();
+                actix::spawn(async move {
+                    match conf {
+                        Config::Quiz { questions } => {
+                             session
+                            .do_send(TeacherCommand::SendText(json!({"event": "new_question", "question": {"text":questions[0].text, "responses": questions[0].responses.iter().map(move |r| {json!({"text": r.text})}).collect::<Vec<Value>>() }}).to_string()))
+
+                        }
+                        Config::Slides(slides) => match &slides[0] {
+                            SlidesItem::Slide(slide) => {
+                                 session
+                                    .do_send(
+                                      TeacherCommand::SendText(  json!({"event": "new_slide", "slide": slide})
+                                            .to_string()),
+                                    )
+
+                            }
+                            SlidesItem::Question(q) => {
+                                 session
+                                .do_send(TeacherCommand::SendText(json!({"event": "new_question", "question": {"text":q.text, "responses": q.responses.iter().map(move |r| {json!({"text": r.text})}).collect::<Vec<Value>>() }}).to_string()))
+                            }
+                        },
+                    }
+                });
+
             }
         }
         MessageResult(GameResponse::None)
@@ -556,20 +618,17 @@ async fn start_game(
     .start();
     state.do_send(StateCommand::CreateGame(code.clone(), g.clone()));
 
-    match session
+    if session
         .text(
             json!(
                 { "event": "gamecode",  "gamecode": code.clone() }
             )
             .to_string(),
         )
-        .await
+        .await.is_err()
     {
-        Ok(_) => {}
-        Err(_) => {
             state.do_send(StateCommand::DeleteGame(code.clone()));
-        }
-    };
+    }
 
     let mut stream = stream
         .aggregate_continuations()
@@ -578,78 +637,8 @@ async fn start_game(
         while let Some(msg) = stream.next().await {
             match msg {
                 Ok(AggregatedMessage::Text(text)) => {
-                    println!("{text}");
                     if text == "gamestart" {
-                        let game = match state.send(StateCommand::GetGame(code.clone())).await {
-                            Ok(StateResponse::Game(Some(r))) => r,
-                            _ => {
-                                let _ = session.text(json!({ "event": "error", "error": "Game not found on server" }).to_string()).await;
-                                panic!();
-                            }
-                        };
-                        game.do_send(GameCommand::SetPhase(GamePhase::OnQuestion(0)));
-                        game.do_send(GameCommand::SendTextToPlayers("gamestart".to_string()));
-                        if let Ok(GameResponse::Config(conf)) =
-                            &game.send(GameCommand::GetConfig).await
-                        {
-                            match conf {
-                                Config::Quiz { questions } => {
-                                    game
-                                    .do_send(GameCommand::SendTextToPlayers(json!({"event": "new_question", "question": {"number": 0, "text": questions[0].text, "responses": questions[0].responses.iter().map(move |r| {json!({"text": r.text})}).collect::<Vec<Value>>() }}).to_string()));
-                                }
-                                Config::Slides(slides) => {
-                                    if let SlidesItem::Question(q) = &slides[0] {
-                                        game
-                                        .do_send(GameCommand::SendTextToPlayers(json!({"event": "new_question", "question": {"number": 0, "text": q.text, "responses": q.responses.iter().map(move |r| {json!({"text": r.text})}).collect::<Vec<Value>>() }}).to_string()));
-                                    }
-                                }
-                            }
-                        }
-
-                        match session
-                            .text(json!({ "event": "gamestart" }).to_string())
-                            .await
-                        {
-                            Ok(_) => {}
-                            Err(_) => {
-                                game.do_send(GameCommand::TeacherDisconnect);
-                            }
-                        };
-                        if let Ok(GameResponse::Config(conf)) =
-                            &game.send(GameCommand::GetConfig).await
-                        {
-                            match conf {
-                                Config::Quiz { questions } => {
-                                    if session
-                                    .text(json!({"event": "new_question", "question": {"text":questions[0].text, "responses": questions[0].responses.iter().map(move |r| {json!({"text": r.text})}).collect::<Vec<Value>>() }}).to_string())
-                                    .await.is_err(){
-                                        g.do_send(GameCommand::TeacherDisconnect);
-                                    };
-                                }
-                                Config::Slides(slides) => match &slides[0] {
-                                    SlidesItem::Slide(slide) => {
-                                        if session
-                                            .text(
-                                                json!({"event": "new_slide", "slide": slide})
-                                                    .to_string(),
-                                            )
-                                            .await
-                                            .is_err()
-                                        {
-                                            g.do_send(GameCommand::TeacherDisconnect);
-                                        };
-                                    }
-                                    SlidesItem::Question(q) => {
-                                        if session
-                                        .text(json!({"event": "new_question", "question": {"text":q.text, "responses": q.responses.iter().map(move |r| {json!({"text": r.text})}).collect::<Vec<Value>>() }}).to_string())
-                                        .await.is_err(){
-                                            g.do_send(GameCommand::TeacherDisconnect);
-                                        };
-                                    }
-                                },
-                            }
-                        }
-                        // g.do_send(GameCommand::Continue);
+state.do_send(StateCommand::StartGame(code.clone()));
                     } else if text == "continue" {
                         println!("Continuing");
                         g.do_send(GameCommand::Continue);
