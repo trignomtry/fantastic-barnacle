@@ -1,4 +1,6 @@
-use std::{collections::HashMap, path::Path, time::Duration};
+use std::{collections::HashMap, time::Duration};
+
+use rusqlite::{Connection, params};
 
 use actix::{Actor, Addr, AsyncContext as _, Context, Handler, Message, MessageResult, WrapFuture};
 
@@ -154,13 +156,7 @@ impl Handler<StateCommand> for State {
             }
             StateCommand::SaveToFile => {
                 let activities = self.activities.clone();
-                let _ = std::fs::write(
-                    Path::new("./activities.txt"),
-                    match serde_json::to_string(&activities) {
-                        Ok(a) => a,
-                        Err(_) => "{}".to_string(),
-                    },
-                );
+                save_activities(&activities);
                 MessageResult(StateResponse::None)
             }
         }
@@ -800,17 +796,93 @@ fn random(n: usize) -> String {
         .collect()
 }
 
+fn load_activities() -> HashMap<String, Activity> {
+    let conn = match Connection::open("activities.db") {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("Failed to open activities.db: {e}");
+            return HashMap::new();
+        }
+    };
+
+    if let Err(e) = conn.execute(
+        "CREATE TABLE IF NOT EXISTS activities (id TEXT PRIMARY KEY, data TEXT NOT NULL)",
+        [],
+    ) {
+        eprintln!("Failed to create table: {e}");
+        return HashMap::new();
+    }
+
+    let mut map = HashMap::new();
+    let mut stmt = match conn.prepare("SELECT id, data FROM activities") {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("Failed to prepare select statement: {e}");
+            return map;
+        }
+    };
+
+    let rows = match stmt.query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))) {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("Failed to query activities: {e}");
+            return map;
+        }
+    };
+
+    for row in rows.flatten() {
+        if let Ok(activity) = serde_json::from_str::<Activity>(&row.1) {
+            map.insert(row.0, activity);
+        }
+    }
+    map
+}
+
+fn save_activities(map: &HashMap<String, Activity>) {
+    let mut conn = match Connection::open("activities.db") {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("Failed to open activities.db: {e}");
+            return;
+        }
+    };
+
+    if let Err(e) = conn.execute(
+        "CREATE TABLE IF NOT EXISTS activities (id TEXT PRIMARY KEY, data TEXT NOT NULL)",
+        [],
+    ) {
+        eprintln!("Failed to create table: {e}");
+        return;
+    }
+
+    let tx = match conn.transaction() {
+        Ok(tx) => tx,
+        Err(e) => {
+            eprintln!("Failed to start transaction: {e}");
+            return;
+        }
+    };
+
+    for (id, activity) in map {
+        if let Ok(json) = serde_json::to_string(activity) {
+            if let Err(e) = tx.execute(
+                "INSERT OR REPLACE INTO activities (id, data) VALUES (?1, ?2)",
+                params![id, json],
+            ) {
+                eprintln!("Failed to insert activity {id}: {e}");
+            }
+        }
+    }
+
+    if let Err(e) = tx.commit() {
+        eprintln!("Failed to commit transaction: {e}");
+    }
+}
+
 #[actix_web::main]
 async fn main() -> Result<(), std::io::Error> {
     println!("Starting server on http://localhost:8085");
-    let exist = serde_json::from_str::<HashMap<String, Activity>>(
-        match std::fs::read_to_string(Path::new("./activities.txt")) {
-            Ok(v) => v,
-            Err(_) => "{}".to_string(),
-        }
-        .as_str(),
-    )
-    .unwrap_or_default();
+    let exist = load_activities();
     let state: Addr<State> = State::new(exist).start();
     HttpServer::new(move || {
         App::new()
