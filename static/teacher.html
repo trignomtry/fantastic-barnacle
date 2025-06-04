@@ -121,7 +121,7 @@
                     let style = slide.TitleText[2];
                     playingGame.innerHTML = "<div id=\"slide\" style='background-color: " + style.color + "; color: " + style.font_color + "'><h1 class='slideTitle'>" + slide.TitleText[0] + "</h1><p>" + slide.TitleText[1] + "</p><button onclick='continue5Secs()'>Continue</button></div>";
                 } else if (slide.OnlyText) {
-                    let style = slide.TitleText[2];
+                    let style = slide.OnlyText[1];
                     playingGame.innerHTML = "<div id=\"slide\" style='background-color: " + style.color + "; color: " + style.font_color + "'><p>" + slide.OnlyText[0] + "</p><button onclick='continue5Secs()'>Continue</button></div>";
                 }
             }
