@@ -782,7 +782,7 @@ async fn get_error(
     path: web::Path<(String, String)>,
     state: web::Data<Addr<State>>,
 ) -> impl Responder {
-    let (name, code) = path.into_inner();
+    let (code, name) = path.into_inner();
     if name.is_inappropriate() {
         return ugg("Name is inappropriate");
     }
